@@ -1,0 +1,456 @@
+{
+  "name": "Conexión con Herramientas de Google",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFile",
+        "fileToWatch": {
+          "__rl": true,
+          "value": "************",
+          "mode": "list",
+          "cachedResultName": "reunionOrganizativa.mp3",
+          "cachedResultUrl": "https://drive.google.com/******************"
+        }
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "********************",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "***************",
+          "name": "*****"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "******************",
+          "mode": "list",
+          "cachedResultName": "reunionOrganizativa.mp3",
+          "cachedResultUrl": "https://drive.google.com/***************"
+        },
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "**********************",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "*******************",
+          "name": "*****************"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/*******************",
+      "typeVersion": 1.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "*********************",
+      "name": "Transcribe a recording",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "****************************",
+          "name": "*********************"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Eres un asistente encargado de procesar transcripciones de reuniones de trabajo.\n\nA partir del texto que recibirás, debes:\n\n1) Generar un RESUMEN breve de la reunión.\n2) Identificar las TAREAS mencionadas.\n3) Para cada tarea, extraer:\n   - descripción\n   - responsable (si no se menciona, usar \"No asignado\")\n   - fecha_limite (si no se menciona, usar null)\n   - estado inicial (usar \"Pendiente\" por defecto)\n\nEntrega SIEMPRE la respuesta en formato JSON válido.\nNo agregues texto fuera del JSON. No incluyas markdown ni ```.\n\nEstructura EXACTA que debes devolver:\n\n{\n  \"resumen\": \"texto\",\n  \"tareas\": [\n    {\n      \"descripcion\": \"texto\",\n      \"responsable\": \"nombre o 'No asignado'\",\n      \"fecha_limite\": \"DD-MM-YYYY o null\",\n      \"estado\": \"Pendiente\"\n    }\n  ]\n}\n\nReglas importantes:\n- No inventes datos si no están en la reunión.\n- Si no hay responsable claro, usa \"No asignado\".\n- Si la fecha no está definida, usa null.\n- No devuelvas explicaciones, solo el JSON.\n\nAhora recibirás la transcripción completa de la reunión:\n\n {{ $json.content.parts[0].text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "**************",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "************",
+          "name": "****************"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Tomamos el texto de Gemini\nlet raw = $json.content?.parts?.[0]?.text ?? '';\n\n// 2) Quitamos etiquetas de bloque como ```json y ```\nraw = raw\n  .replace(/```json/gi, '')\n  .replace(/```/g, '')\n  .trim();\n\n// 3) Nos quedamos entre la primera { y la última }\nconst first = raw.indexOf('{');\nconst last = raw.lastIndexOf('}');\n\nif (first !== -1 && last !== -1) {\n  raw = raw.substring(first, last + 1);\n}\n\n// 4) Parseamos a JSON real\nlet parsed;\ntry {\n  parsed = JSON.parse(raw);\n} catch (err) {\n  throw new Error('No se pudo parsear el JSON devuelto por el modelo:\\n\\n' + raw);\n}\n\n// 5) Normalizamos salida\nreturn [\n  {\n    json: {\n      resumen: parsed.resumen ?? parsed.summary ?? '',\n\n      tareas: (parsed.tareas ?? parsed.tasks ?? []).map(t => ({\n        descripcion: t.descripcion ?? t.description ?? '',\n        responsable: t.responsable ?? t.owner ?? t.asignado ?? '',\n        \n        // Fallbacks posibles que devuelve Gemini\n        fecha_limite:\n          t.fecha_limite ??\n          t.fecha ??\n          t[\"fecha límite\"] ??\n          t.deadline ??\n          t.due_date ??\n          null,\n\n        estado: t.estado ?? t.status ?? 'Pendiente'\n      }))\n    }\n  }\n];\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        976,
+        0
+      ],
+      "id": "***************",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "driveId": "sharedWithMe",
+        "folderId": "={{ $('Google Drive Trigger').item.json.parents[0] }}",
+        "title": "=Acta de reunión – Proyecto sitio web – {{ $now }}"
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        0
+      ],
+      "id": "***",
+      "name": "Create a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "***",
+          "name": "*******************"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "insert",
+              "text": "=Acta de reunión – Proyecto sitio web  Fecha: {{ $now }}  Resumen general:  {{ $('Code in JavaScript').item.json.resumen }}   Tareas acordadas: {{  $('Code in JavaScript').item.json.tareas.map((t, i) =>     (i + 1) + '. ' +     t.descripcion + '\\n' +     '   Responsable: ' + t.responsable + '\\n' +     '   Fecha límite: ' + (t.fecha_limite || 'Sin definir') + '\\n' +     '   Estado: ' + t.estado + '\\n' ).join('\\n') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        0
+      ],
+      "id": "*********",
+      "name": "Update a document",
+      "credentials": {
+        "googleDocsOAuth2Api": {
+          "id": "***********",
+          "name": "***********"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.documentId }}",
+          "mode": "id"
+        },
+        "options": {
+          "googleFileConversion": {
+            "conversion": {
+              "drawingsToFormat": "application/pdf",
+              "slidesToFormat": "application/pdf",
+              "sheetsToFormat": "application/pdf"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1600,
+        0
+      ],
+      "id": "**************",
+      "name": "Download file1",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "*****",
+          "name": "**********"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ejemplo: tu array de tareas ya armadas\nconst tareas = [\n  {\n    descripcion: \"Agregar la recuperación de contraseña.\",\n    responsable: \"Lucas\",\n    fecha_limite: \"2023-11-17\",\n    estado: \"Pendiente\",\n  },\n  {\n    descripcion: \"Integrar módulo de pagos con Mercado Pago (entorno de prueba).\",\n    responsable: \"Sofía\",\n    fecha_limite: \"2023-11-16\",\n    estado: \"Pendiente\",\n  },\n  {\n    descripcion: \"Realizar cambios en la paleta de colores y visibilidad de botones.\",\n    responsable: \"Carolina\",\n    fecha_limite: \"2023-11-08\",\n    estado: \"Pendiente\",\n  },\n{\n\"descripcion\": \"Maquetar la nueva sección de testimonios para la página principal.\",\n\"responsable\": \"Matías\",\n\"fecha_limite\": \"30-05-2024\",\n\"estado\": \"Pendiente\"\n}, \n{\n\"descripcion\": \"Finalizar el calendario de contenidos para marketing.\",\n\"responsable\": \"Ana\",\n\"fecha_limite\":\"31-05-2024\",\n\"estado\": \"Pendiente\"\n},\n{\n\"descripcion\": \"Definir el flujo de respuestas iniciales en redes sociales para el lanzamiento.\",\n\"responsable\": \"Juan\",\n\"fecha_limite\": \"31-05-2024\",\n\"estado\": \"Pendiente\"\n} \n];\n\n// Convertimos cada tarea en un “item” para n8n\nconst items = tareas.map((t) => {\n  let to_do = \"\";\n  let doing = \"\";\n  let done = \"\";\n\n  // Ejemplo simple: todo en TO DO\n  to_do = \"X\";\n\n  return {\n    json: {\n      tarea: t.descripcion,\n      responsable: t.responsable,\n      fecha_limite: t.fecha_limite || \"\",\n      estado_texto: t.estado || \"Pendiente\",\n      to_do,\n      doing,\n      done,\n    },\n  };\n});\n\n// n8n necesita que devolvamos un ARRAY de items\nreturn items;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        224
+      ],
+      "id": "*************",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "*******",
+          "mode": "list",
+          "cachedResultName": "Kanban – Preparar tareas",
+          "cachedResultUrl": "https://docs.google.com/***"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/***"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "TAREA": "={{ $json.tarea }}",
+            "RESPONSABLE": "={{ $json.responsable }}",
+            "FECHA LÍMITE": "={{ $json.fecha_limite }}",
+            "TO DO": "={{ $json.to_do }}"
+          },
+          "matchingColumns": [
+            "TAREA"
+          ],
+          "schema": [
+            {
+              "id": "TAREA",
+              "displayName": "TAREA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "RESPONSABLE",
+              "displayName": "RESPONSABLE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "FECHA LÍMITE",
+              "displayName": "FECHA LÍMITE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TO DO",
+              "displayName": "TO DO",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DOING",
+              "displayName": "DOING",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "DONE",
+              "displayName": "DONE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1200,
+        224
+      ],
+      "id": "********************************",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "****",
+          "name": "***"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Create a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create a document": {
+      "main": [
+        [
+          {
+            "node": "Update a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a document": {
+      "main": [
+        [
+          {
+            "node": "Download file1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "***",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "***"
+  },
+  "id": "****",
+  "tags": []
+}
