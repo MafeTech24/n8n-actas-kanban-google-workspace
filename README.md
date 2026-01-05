@@ -3,35 +3,40 @@
 Este proyecto implementa un flujo automatizado para:
 
 ✔ transcribir reuniones
+
 ✔ generar actas automáticas en Google Docs
+
 ✔ crear y actualizar tablero Kanban en Google Sheets
+
 ✔ sincronizar estado de tareas
+
 ✔ exportar documentos
+
 ✔ mantener trazabilidad del proyecto
 
 El workflow está desarrollado en n8n y se integra con:
 
-Google Drive
+- Google Drive
 
-Google Docs
+- Google Docs
 
-Google Sheets
+- Google Sheets
 
-Gemini / LLM para resumen y extracción de tareas
+- Gemini / LLM para resumen y extracción de tareas
 
 <hr>
 
 ## 🚀 Flujo general del sistema
 
-1) Se carga un audio al Google Drive
+**1).**  Se carga un audio al Google Drive
 
-2) n8n detecta el archivo nuevo
+**2).** n8n detecta el archivo nuevo
 
-3) Se descarga el audio
+**3).** Se descarga el audio
 
-4) Se transcribe la reunión
+**4).** Se transcribe la reunión
 
-5) Un modelo LLM:
+**5).** Un modelo LLM:
 
 - resume
 
@@ -39,11 +44,11 @@ Gemini / LLM para resumen y extracción de tareas
 
 - asigna responsables
 
-6) Se genera un acta en Google Docs
+**6).** Se genera un acta en Google Docs
 
-7) Se llena o actualiza el tablero Kanban en Google Sheets
+**7).** Se llena o actualiza el tablero Kanban en Google Sheets
 
-8) Se exporta el documento si es necesario
+**8).** Se exporta el documento si es necesario
 
 <hr>
 
@@ -129,8 +134,11 @@ Se utiliza para construir el tablero **Kanban** con columnas:
 Funciones implementadas:
 
 ✅ carga automática de tareas
+
 ✅ normalización de estados
+
 ✅ validación de columnas
+
 ✅ sync bidireccional (editable desde Sheets)
 
 Nodo responsable:
@@ -194,11 +202,11 @@ También se requiere:
 
 ## ▶️ Cómo ejecutar el proyecto
 
-1) Importar JSON del workflow en n8n
+**1)** Importar JSON del workflow en n8n
 
-2) Configurar credenciales de Google
+**2)** Configurar credenciales de Google
 
-3) Vincular cuentas:
+**3)** Vincular cuentas:
 
 * Google Drive
 
@@ -206,9 +214,9 @@ También se requiere:
 
 * Google Sheets
 
-4) Activar workflow
+**4)** Activar workflow
 
-5) Subir audio a carpeta de Drive
+**5)** Subir audio a carpeta de Drive
 
 📌 Ver resultados en:
 
@@ -237,5 +245,6 @@ También se requiere:
 <hr>
 
 ## 👩‍💻 Autora
+
 
 María Fernanda Moreno
